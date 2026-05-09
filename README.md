@@ -4,23 +4,27 @@ Microservicio encargado de almacenar los resúmenes clínicos generados por Clau
 
 ---
 
+## Equipo
+
+| Nombre | Rol |
+|---|---|
+| Génesis Rojas | Líder de Proyecto / DBA / Analista Funcional |
+| Francisco Monsalve | Frontend Mobile / QA |
+| Benjamín Peña | Backend / Integración IA / DevOps |
+
+---
+
 ## Tecnologías
 
 - Java 21
 - Spring Boot 3.5.14
 - Spring Security + JWT (jjwt 0.12.6)
 - Spring Data JPA
-- MySQL
+- MySQL 8.0 (Docker)
 - Lombok
 - Maven
 
----
-
-## Puerto
-
-```
-8084
-```
+**Puerto:** `8084`
 
 ---
 
@@ -30,28 +34,28 @@ Microservicio encargado de almacenar los resúmenes clínicos generados por Clau
 src/main/java/com/kidcare/historial_service/
 │
 ├── model/
-│   └── Historial.java → Entidad que almacena los resúmenes generados por Claude para el médico
+│   └── Historial.java → Resumen generado por Claude para el médico
 │
 ├── repository/
-│   └── HistorialRepository.java → Acceso a datos de Historial (búsqueda por menor, último historial)
+│   └── HistorialRepository.java → Búsqueda por menor, último historial
 │
 ├── dto/
-│   ├── HistorialRequestDTO.java  → Datos para crear un historial con el resumen de Claude
-│   └── HistorialResponseDTO.java → Datos de respuesta de un historial
+│   ├── HistorialRequestDTO.java  → Datos para crear un historial
+│   └── HistorialResponseDTO.java → Datos de respuesta
 │
 ├── security/
 │   ├── JwtUtil.java        → Genera, valida y extrae datos de tokens JWT
-│   ├── JwtFilter.java      → Intercepta cada request y valida el token JWT del header
-│   └── SecurityConfig.java → Configura rutas públicas, protegidas y política de sesión
+│   ├── JwtFilter.java      → Intercepta requests y valida el JWT del header
+│   └── SecurityConfig.java → Rutas públicas y protegidas, política de sesión stateless
 │
 ├── service/
-│   └── HistorialService.java → Lógica de creación, listado y obtención del último historial
+│   └── HistorialService.java → Creación, listado y obtención del último historial
 │
 ├── controller/
 │   └── HistorialController.java → Endpoints de /api/historial
 │
 └── exception/
-    └── GlobalExceptionHandler.java → Maneja errores de validación y excepciones de negocio
+    └── GlobalExceptionHandler.java → Errores de validación → 400 Bad Request
 ```
 
 ---
@@ -77,52 +81,139 @@ src/main/java/com/kidcare/historial_service/
 
 ---
 
-## Requisitos previos
+## Cómo iniciar en otro equipo
 
-- Java 21 instalado
-- Maven instalado
-- MySQL corriendo (cuando se conecte la BD)
-- VS Code con Extension Pack for Java y Spring Boot Extension Pack
+### Prerrequisitos
+
+| Herramienta | Versión mínima | Descarga |
+|---|---|---|
+| Java JDK | 21 | https://adoptium.net |
+| Maven | 3.9+ | https://maven.apache.org/download.cgi |
+| Docker Desktop | 4.x | https://www.docker.com/products/docker-desktop |
+| Git | cualquiera | https://git-scm.com |
+
+Verifica la instalación:
+```bash
+java -version    # debe decir openjdk 21
+mvn -version     # debe decir Apache Maven 3.9.x
+docker --version # debe decir Docker version 24.x o superior
+```
 
 ---
 
-## Cómo iniciar el proyecto
-
-### 1. Clonar el repositorio
+### Paso 1 — Clonar el repositorio
 
 ```bash
 git clone https://github.com/vareeth227/KidCare_Historial_Backend.git
 cd KidCare_Historial_Backend
 ```
 
-### 2. Configurar variables de entorno
+---
 
-Edita el archivo `src/main/resources/application.properties` con tus datos de MySQL cuando tengas la base de datos lista:
+### Paso 2 — Iniciar MySQL con Docker
 
-```properties
-server.port=8084
-spring.application.name=historial-service
-spring.datasource.url=jdbc:mysql://localhost:3306/db_historial
-spring.datasource.username=TU_USUARIO
-spring.datasource.password=TU_PASSWORD
-spring.jpa.hibernate.ddl-auto=update
-jwt.secret=kidcare-secret-key-2024-segura-32chars
-jwt.expiration=86400000
+Crea el archivo `docker-compose.yml` en la carpeta raíz del proyecto:
+
+```yaml
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: kidcare-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: kidcare123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  mysql_data:
 ```
 
-### 3. Compilar el proyecto
+Inicia el contenedor:
+
+```bash
+docker compose up -d
+```
+
+Espera 15–20 segundos y verifica:
+
+```bash
+docker ps
+```
+
+Debes ver `kidcare-mysql` con estado `Up`.
+
+---
+
+### Paso 3 — Crear la base de datos
+
+```bash
+docker exec -it kidcare-mysql mysql -u root -pkidcare123 -e "CREATE DATABASE IF NOT EXISTS db_historial CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+
+Verifica:
+
+```bash
+docker exec -it kidcare-mysql mysql -u root -pkidcare123 -e "SHOW DATABASES;"
+```
+
+Debes ver `db_historial` en la lista.
+
+---
+
+### Paso 4 — Revisar application.properties
+
+El archivo `src/main/resources/application.properties` ya está configurado para conectarse a MySQL local con las credenciales del Paso 2. No necesitas cambiar nada para desarrollo local.
+
+---
+
+### Paso 5 — Compilar
 
 ```bash
 mvn clean install -DskipTests
 ```
 
-### 4. Ejecutar el proyecto
+Espera a que aparezca `BUILD SUCCESS`.
+
+---
+
+### Paso 6 — Ejecutar
 
 ```bash
 mvn spring-boot:run
 ```
 
-El microservicio estará disponible en `http://localhost:8084`
+Espera a que aparezca:
+
+```
+Started HistorialServiceApplication in X.XXX seconds
+```
+
+El servicio queda disponible en `http://localhost:8084`.
+
+---
+
+### Paso 7 — Verificar
+
+Necesitas un token JWT válido del usuario-service (puerto 8081). Con ese token:
+
+**PowerShell:**
+```powershell
+$token = "eyJ..."  # pega tu token JWT aquí
+Invoke-RestMethod -Uri "http://localhost:8084/api/historial/menor/1" -Method GET -Headers @{Authorization="Bearer $token"}
+```
+
+Respuesta esperada: lista vacía `[]` — confirma que el JWT fue validado correctamente.
+
+La ruta pública del médico no requiere token:
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8084/api/historial/medico/1" -Method GET
+```
 
 ---
 
@@ -130,15 +221,4 @@ El microservicio estará disponible en `http://localhost:8084`
 
 - El token JWT debe enviarse en el header `Authorization: Bearer <token>` en todas las rutas protegidas.
 - La ruta `/api/historial/medico/{idMenor}` es pública porque el médico no tiene cuenta en el sistema.
-- La clave `jwt.secret` debe ser la misma en todos los microservicios de KidCare.
-- Por ahora la base de datos está desactivada en `application.properties`. Cuando se conecte Docker hay que eliminar la línea `spring.autoconfigure.exclude`.
-
----
-
-## Integrantes
-
-| Nombre | Rol |
-|--------|-----|
-| Génesis Rojas | Líder de Proyecto / DBA / Analista Funcional |
-| Francisco Monsalve | Frontend Mobile / QA |
-| Benjamín Peña | Backend / Integración IA / DevOps |
+- La clave `jwt.secret` debe ser la misma en todos los microservicios de KidCare: `kidcare-secret-key-2024-segura-32chars`
