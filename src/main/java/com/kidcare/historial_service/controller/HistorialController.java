@@ -1,11 +1,14 @@
 package com.kidcare.historial_service.controller;
 
+import com.kidcare.historial_service.dto.GenerarHistorialRequestDTO;
+import com.kidcare.historial_service.dto.GenerarHistorialResponseDTO;
 import com.kidcare.historial_service.dto.HistorialRequestDTO;
 import com.kidcare.historial_service.dto.HistorialResponseDTO;
 import com.kidcare.historial_service.service.HistorialService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,5 +39,13 @@ public class HistorialController {
     @GetMapping("/medico/{idMenor}")
     public ResponseEntity<HistorialResponseDTO> obtenerUltimo(@PathVariable Integer idMenor) {
         return ResponseEntity.ok(historialService.obtenerUltimo(idMenor));
+    }
+
+    // POST /api/historial/generar — genera resumen con Claude API (CU012)
+    @PostMapping("/generar")
+    public ResponseEntity<GenerarHistorialResponseDTO> generarConIA(
+            @Valid @RequestBody GenerarHistorialRequestDTO dto,
+            Authentication authentication) {
+        return ResponseEntity.ok(historialService.generarConClaude(dto));
     }
 }
