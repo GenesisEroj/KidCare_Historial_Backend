@@ -1,0 +1,51 @@
+services:
+  ms-historial:
+    build: .
+    image: kidcare-ms-historial
+    container_name: kidcare-historial
+    ports:
+      - "8084:8084"
+    environment:
+      - DB_HISTORIAL_URL=jdbc:mysql://mysql-historial:3306/db_historial?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-kidcare123}
+      - JWT_SECRET=${JWT_SECRET:-kidcare_super_secret_jwt_key_for_dev_only_1234567890}
+      - JWT_EXPIRATION=86400000
+      - CHATBOT_SERVICE_URL=${CHATBOT_SERVICE_URL:-http://ms-chatbot:8083}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-6}
+      - PORT=8084
+    depends_on:
+      mysql-historial:
+        condition: service_healthy
+    networks:
+      - kidcare-network
+
+  mysql-historial:
+    image: mysql:8.0
+    container_name: mysql-historial
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-kidcare123}
+      MYSQL_DATABASE: db_historial
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_historial_data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pkidcare123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kidcare-network
+
+volumes:
+  mysql_historial_data:
+
+networks:
+  kidcare-network:
+    driver: bridge
